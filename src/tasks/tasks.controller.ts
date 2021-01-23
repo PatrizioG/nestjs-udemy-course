@@ -1,8 +1,10 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, UsePipes, ValidationPipe } from '@nestjs/common';
 import { CreateTaskDto } from './dto/CreateTaskDto';
 import { GetTaskFilterDto } from './dto/GetTaskFilterDto';
-import { Task, TaskStatus } from './task.model';
+import { TaskStatusValidationPipe } from './pipes/TaskStatusValidationPipe';
+import { Task } from './task.entity';
 import { TasksService } from './tasks.service';
+import { TaskStatus } from './TaskStatus';
 
 @Controller('tasks')
 export class TasksController {
@@ -10,32 +12,28 @@ export class TasksController {
     }
 
     @Get()
-    getAllTasks(@Query() filterDto: GetTaskFilterDto): Task[] {
-
-        if (Object.keys(filterDto).length) {
-            return this.taskService.getTasksWithFilters(filterDto);
-        } else {        
-            return this.taskService.getAllTasks();
-        }
+    getAllTasks(@Query(ValidationPipe) filterDto: GetTaskFilterDto): Promise<Task[]> {
+      return this.taskService.getTasks(filterDto);
     }
 
     @Get('/:id')
-    getTaskById(@Param('id') id: string): Task {
+    getTaskById(@Param('id', ParseIntPipe) id: number): Promise<Task> {
         return this.taskService.getTaskById(id);
     }
 
     @Delete('/:id')
-    deleteTask(@Param('id') id: string): void {
-        this.taskService.deleteTask(id);
+    deleteTask(@Param('id', ParseIntPipe) id: number): Promise<void> {
+        return this.taskService.deleteTask(id);
     }
 
-    @Patch('/:id/status')
-    updateStatusTask(@Param('id') id: string, @Body('status') status: TaskStatus) {
+    @Patch('/:id/status')    
+    updateStatusTask(@Param('id') id: number, @Body('status', TaskStatusValidationPipe) status: TaskStatus) {
         return this.taskService.updateStatusTask(id, status);
     }
 
     @Post()
-    createTask( @Body() createTaskDto: CreateTaskDto ): Task {
-            return this.taskService.createTask(createTaskDto);
+    @UsePipes(ValidationPipe)
+    createTask( @Body() createTaskDto: CreateTaskDto ): Promise<Task> {
+        return this.taskService.createTask(createTaskDto);
     }    
 }
